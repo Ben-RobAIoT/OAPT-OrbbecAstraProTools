@@ -1,0 +1,9 @@
+# Bỏ qua môi trường ảo
+venv/
+
+# Bỏ qua các file rác của Python
+__pycache__/
+*.pyc
+
+# Bỏ qua các file rác metadata từ Windows
+*Zone.Identifier
