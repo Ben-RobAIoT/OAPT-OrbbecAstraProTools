@@ -1,91 +1,157 @@
-# APDCT_AstraProDepthCameraTestbenchs
+# Chạy Orbbec Astra Pro trên WSL2 (Ubuntu 24.04 + ROS2 Jazzy) từ Windows 11 — Guide đầy đủ
 
-Dự án Testbench giao tiếp tầng lõi (Low-level) với phần cứng Orbbec Astra Pro Depth Camera trên môi trường Linux/WSL2, không phụ thuộc vào các công cụ đóng gói sẵn của nhà sản xuất.
+Trước khi vào chi tiết, có 2 điểm mấu chốt cần hiểu rõ vì chúng chính là nguồn gốc "xung đột" bạn hay gặp:
 
-## 🎯 Mục tiêu dự án
-Xây dựng nền tảng trích xuất đồng thời 3 luồng dữ liệu (RGB, Depth, IR) từ camera chiều sâu Orbbec Astra Pro phục vụ cho các bài toán Computer Vision. Hệ thống được thiết kế tối ưu hóa băng thông, chạy mượt mà trên môi trường máy ảo (WSL2) đạt mốc 30 FPS.
-
-## 🛠 Môi trường & Từ khóa công nghệ lõi (Core Technologies)
-*   **Hệ điều hành:** Linux Ubuntu 24.04 (chạy qua nền tảng máy ảo WSL2 trên Windows 11).
-*   **Giao thức phần cứng:** `usbipd-win` (Hardware USB Passthrough sang WSL2), V4L2 (Video4Linux2 API).
-*   **Thư viện lõi Camera:** `OpenNI2` (giao tiếp trực tiếp qua file `.so` và trình điều khiển Linux).
-*   **Xử lý & Hiển thị ảnh:** `OpenCV` (cv2), `NumPy`, `WSLg` (GUI rendering trên máy ảo).
-*   **Kiến trúc phần mềm:** Môi trường ảo Python (`venv`), Đa luồng (`Multi-threading`).
+1. **Astra Pro có 2 cảm biến USB tách biệt**: một camera **RGB chuẩn UVC** (nhận diện như webcam bình thường) và một module **Depth/IR** (ánh sáng cấu trúc, giao tiếp qua OpenNI2/libuvc riêng). Windows/WSL2 sẽ thấy đây là **2 thiết bị USB khác nhau**, cần passthrough cả hai.
+2. **Depth và IR dùng chung 1 sensor vật lý** → hầu hết driver (astra_camera, OrbbecSDK) **không cho chạy Depth + IR raw cùng lúc**, đây là giới hạn phần cứng chứ không phải lỗi cấu hình. Bạn chỉ chạy song song được **RGB + Depth** hoặc **RGB + IR**, không phải cả 3 cùng lúc theo kiểu raw.
 
 ---
 
-## 💡 Các vấn đề & Giải pháp đã triển khai (Lessons Learned)
+## Bước 1 — Passthrough USB từ Windows sang WSL2
 
-Dưới đây là các kỹ thuật cốt lõi đã được áp dụng để giải quyết các giới hạn của môi trường WSL2 và thư viện OpenNI2:
+WSL2 không thấy USB trực tiếp, cần `usbipd-win`.
 
-### 1. Vượt rào phần cứng (Hardware Passthrough)
-*   **Vấn đề:** Máy ảo WSL2 mặc định không nhận diện được phần cứng USB cắm vào máy Host (Windows). Camera Astra Pro phân mảnh thành 2 thiết bị riêng biệt (Astra Pro HD Camera cho RGB và ORBBEC Depth Sensor cho Depth/IR).
-*   **Giải pháp:** Sử dụng `usbipd-win` trên Windows để chia sẻ (bind) và gắn (attach) cả hai `BUSID` vào Ubuntu. Đồng thời cài đặt `linux-tools-virtual` và cấp quyền `sudo` khi chạy script để vượt qua rào cản phân quyền USB raw của Linux.
-
-### 2. Khởi tạo trực tiếp Lõi OpenNI2 (Direct Shared Library Loading)
-*   **Vấn đề:** Tránh sử dụng các bộ SDK cồng kềnh, cần nạp trực tiếp thư viện động. Lỗi không tìm thấy thiết bị (`ONI_STATUS_NO_DEVICE`) dù mã nạp thành công.
-*   **Giải pháp:** 
-    *   Sử dụng `ctypes.cdll.LoadLibrary` để ép lõi Linux nhận diện file `libOpenNI2.so`.
-    *   Đảm bảo **cấu trúc thư mục bắt buộc**: Phải có thư mục `OpenNI2/Drivers` (chứa `liborbbec.so`) nằm cùng cấp với script thực thi và file `libOpenNI2.so` để thư viện có thể nạp "nhạc công" (driver) phần cứng.
-
-### 3. Tối ưu hóa băng thông USB chống Lag (Anti-Bottleneck)
-*   **Vấn đề:** Lỗi `select() timeout` từ `cap_v4l.cpp` và hiện tượng giật lag khung hình cực nặng. Nguyên nhân do cổ chai băng thông mạng ảo khi truyền dữ liệu video thời gian thực (Isochronous transfers) và kiến trúc code chạy đồng bộ (Synchronous).
-*   **Giải pháp Đa luồng (Multi-threading):** Tách việc đọc luồng RGB (qua OpenCV) và luồng Depth/IR (qua OpenNI2) thành 2 luồng (thread) chạy ngầm độc lập.
-*   **Giải pháp OpenCV:** 
-    *   Ép định dạng nén `MJPG` (`cv2.CAP_PROP_FOURCC`) để giảm tải băng thông so với ảnh RAW.
-    *   Giới hạn `cv2.CAP_PROP_BUFFERSIZE` về 1 để loại bỏ độ trễ, chỉ lấy khung hình mới nhất.
-    *   Sử dụng cơ chế `Auto-scan` (quét từ `/dev/video0` đến `video5`) để tự động tìm đúng cổng UVC Camera.
-
-### 4. Quản lý vòng đời phần cứng (Graceful Shutdown)
-*   **Vấn đề:** Tắt chương trình đột ngột bằng `Ctrl+C` khiến tiến trình bị ngắt ngang, để lại "bóng ma" khóa cổng USB. Lần chạy tiếp theo báo lỗi không tìm thấy Camera.
-*   **Giải pháp:** Sử dụng cấu trúc `try...except KeyboardInterrupt...finally`. Bắt buộc chương trình phải gọi các lệnh dọn dẹp tài nguyên (`t.join()`, `openni2.unload()`, `cap.release()`) trước khi thoát hoàn toàn, trả lại tự do cho cổng USB.
-
----
-
-## 🚀 Hướng dẫn chạy Testbench
-
-**Bước 1: Kết nối thiết bị từ Windows**
-Mở PowerShell (Admin) và gắn Camera vào WSL:
+**Trên PowerShell (Admin) ở Windows:**
 ```powershell
-usbipd bind --busid <BUSID_1>
-usbipd bind --busid <BUSID_2>
-usbipd attach --wsl --busid <BUSID_1>
-usbipd attach --wsl --busid <BUSID_2>
+winget install usbipd
+usbipd list
+```
+Bạn sẽ thấy 2 dòng cho Astra Pro, ví dụ:
+```
+2-3  2bc5:0403  Orbbec RGB Camera
+2-4  2bc5:0501  Orbbec Depth/IR Sensor
+```
+Gắn cả hai vào WSL2:
+```powershell
+usbipd bind --busid 2-3
+usbipd bind --busid 2-4
+usbipd attach --wsl --busid 2-3
+usbipd attach --wsl --busid 2-4
+```
+> Mẹo: viết 1 file `.ps1` để attach cả 2 mỗi lần bật máy, vì `usbipd attach` không tự nhớ sau reboot.
+
+**Kiểm tra trong Ubuntu (WSL2):**
+```bash
+lsusb
+```
+Phải thấy cả 2 thiết bị Orbbec (vendor `2bc5` hoặc `05a9` tùy bản Astra Pro).
+
+---
+
+## Bước 2 — udev rules trong Ubuntu 24.04
+
+```bash
+sudo tee /etc/udev/rules.d/99-orbbec-astra.rules > /dev/null <<'EOF'
+SUBSYSTEM=="usb", ATTR{idVendor}=="2bc5", MODE:="0666", OWNER:="root", GROUP:="video"
+SUBSYSTEM=="usb", ATTR{idVendor}=="05a9", MODE:="0666", OWNER:="root", GROUP:="video"
+EOF
+
+sudo usermod -aG video $USER
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+Lưu ý: WSL2 không có systemd-udevd chạy full như máy thật, nên nếu quyền vẫn bị từ chối, thêm dòng khởi động thủ công `sudo udevadm trigger --attr-match=subsystem=usb` mỗi lần attach thiết bị, hoặc đơn giản `sudo chmod 666 /dev/bus/usb/00X/00Y` tương ứng.
+
+---
+
+## Bước 3 — Chọn driver ROS2 phù hợp Jazzy
+
+`ros-jazzy-astra-camera` **chưa có binary chính thức** (repo `ros-drivers/astra_camera` dừng ở Humble/Iron). Với Jazzy, dùng driver chính chủ Orbbec:
+
+```bash
+mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
+git clone https://github.com/orbbec/OrbbecSDK_ROS2.git
+cd ~/ros2_ws
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install --event-handlers console_direct+
+echo "source ~/ros2_ws/install/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+Package này build sẵn hỗ trợ Jazzy và cover cả dòng Astra/Astra Pro/Gemini.
+
+---
+
+## Bước 4 — Launch file cấu hình RGB / Depth / IR không xung đột
+
+Tạo `~/ros2_ws/src/astra_pro_launch/launch/astra_pro.launch.py`:
+
+```python
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument('depth_mode', default_value='true'),
+        DeclareLaunchArgument('ir_mode', default_value='false'),
+
+        Node(
+            package='orbbec_camera',
+            executable='orbbec_camera_node',
+            name='astra_pro',
+            output='screen',
+            parameters=[{
+                'camera_name': 'astra_pro',
+                'enable_color': True,
+                'enable_depth': LaunchConfiguration('depth_mode'),
+                'enable_ir': LaunchConfiguration('ir_mode'),
+                'depth_registration': True,   # căn Depth khớp RGB
+                'color_width': 640, 'color_height': 480, 'color_fps': 30,
+                'depth_width': 640, 'depth_height': 480, 'depth_fps': 30,
+                'uvc_backend': 'libuvc',
+            }]
+        ),
+    ])
 ```
 
-**Bước 2: Cấu trúc thư mục**
-```text
-APDCT_AstraProDepthCameraTestbenchs/
- ├── venv/
- ├── 03_multithreaded_testbench.py
- ├── libOpenNI2.so
- └── OpenNI2/                 
-      └── Drivers/
-           ├── liborbbec.so   
-           └── ...
+Chạy 2 profile khác nhau (không bao giờ bật cả depth+ir cùng lúc):
+```bash
+ros2 launch astra_pro_launch astra_pro.launch.py depth_mode:=true  ir_mode:=false   # RGB + Depth
+ros2 launch astra_pro_launch astra_pro.launch.py depth_mode:=false ir_mode:=true    # RGB + IR
+```
+Nếu cần đổi mode khi node đang chạy mà không restart, dùng `ros2 param set` (nếu driver hỗ trợ dynamic param) hoặc script bash toggle giữa 2 launch trên — **tuyệt đối không mở 2 node cùng claim 1 USB interface**, đó là nguyên nhân lỗi `Resource busy` / `libusb_claim_interface failed` bạn có thể đang gặp.
+
+---
+
+## Bước 5 — Xem hình ảnh "trong" VSCode mà không đụng driver
+
+Có 2 cách, chọn theo nhu cầu:
+
+### Cách A — Nhanh, dùng WSLg (khuyên dùng để test)
+Windows 11 + WSL2 có sẵn WSLg → GUI Linux tự hiện ra như app Windows, chạy song song cửa sổ VSCode, **không xung đột** vì chỉ subscribe topic chứ không mở lại thiết bị:
+```bash
+ros2 run rqt_image_view rqt_image_view   # chọn topic /astra_pro/color/image_raw, /depth/image_raw, /ir/image_raw
+# hoặc
+rviz2
 ```
 
-**Bước 3: Khởi chạy trong Ubuntu (WSL2)**
-```text
-sudo ./venv/bin/python3 03_multithreaded_testbench.py
+### Cách B — Thực sự nhúng vào tab VSCode (Foxglove qua Simple Browser)
+Cách này cho cảm giác "mở trên VSCode" đúng nghĩa vì hiển thị ngay trong 1 tab editor:
+
+```bash
+sudo apt install ros-jazzy-rosbridge-suite
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 ```
+Trong VSCode: `Ctrl+Shift+P` → **Simple Browser: Show** → nhập `https://app.foxglove.dev` → kết nối tới `ws://localhost:9090` → tạo 3 panel **Image** trỏ tới:
+- `/astra_pro/color/image_raw`
+- `/astra_pro/depth/image_raw`
+- `/astra_pro/ir/image_raw` (chỉ hiện khi bật ir_mode)
 
+→ Xem cả RGB/Depth/IR ngay trong 1 tab VSCode, không cần app rời, không tranh chấp USB vì mọi thứ đi qua topic ROS2.
 
+---
 
-Bạn hãy nhớ cập nhật thêm mục "Quick Start / Cài đặt tự động" vào file README.md mà chúng ta viết lúc nãy, bảo người dùng clone về chỉ cần chạy ./setup.sh là xong!
-./setup.sh
+## Checklist tránh xung đột thường gặp
 
-# Báo cho Git biết trạng thái hiện tại (nó sẽ nhận diện .gitignore và phớt lờ venv)
-git add .
+| Triệu chứng | Nguyên nhân | Cách xử lý |
+|---|---|---|
+| `Device or resource busy` | 2 node cùng mở camera, hoặc chưa `usbipd detach` lần trước | Chỉ 1 node driver duy nhất, `usbipd detach`/`attach` lại |
+| Depth và IR đều trống | Bật cả `enable_depth` + `enable_ir` cùng lúc | Chỉ bật 1 trong 2 (giới hạn phần cứng) |
+| Mất kết nối USB sau khi Windows sleep | usbip không tự reconnect | Viết script PowerShell attach lại sau khi resume |
+| Permission denied /dev/bus/usb | udev rule chưa áp dụng trong WSL2 | `sudo chmod 666` thủ công hoặc chạy lại `udevadm trigger` |
+| FPS thấp/giật khi qua WSL2 | USB/IP tunnel qua TCP nội bộ có overhead | Giảm xuống 640x480@30fps thay vì 1280x720 |
 
-# Đóng gói phiên bản đầu tiên
-git commit -m "Initial commit: Orbbec Astra Pro Multi-threaded Testbench cho Linux/WSL2"
+Bạn muốn mình viết luôn file `.ps1` auto-attach cả 2 thiết bị Astra Pro khi khởi động Windows, hoặc soạn sẵn `tasks.json`/`launch.json` cho VSCode để bấm 1 phím chạy toàn bộ pipeline (usbipd attach → colcon build → ros2 launch → mở Foxglove) không?
 
-# Đổi tên nhánh chính thành main
-git branch -M main
-
-# Kết nối folder này với tên Repo mới trên GitHub (Thay URL bằng link của bạn)
-git remote add origin https://github.com/TenCuaBan/Ten_Repo_Moi.git
-
-# Phóng tàu lên không gian!
-git push -u origin main
+This response was generated by Apollo AI, an internal AI assistant. Please validate important outputs against official Apollo documents, systems, and responsible teams before acting on them.
