@@ -13,7 +13,7 @@ Dưới đây là file `README.md` đầy đủ, chi tiết, tổng hợp lại 
    * 📥 [Tải Driver chính thức tại đây](https://github.com/orbbec/OpenNI_SDK/releases)
 
 3. **Tổng hợp trong Google Drive**
-   * 📥 [Truy cập vào Google Drive để tải các gói thư viện cần thiết tính tới hiện nay 19/08/2026] (https://drive.google.com/drive/u/0/my-drive)
+   * 📥 [Truy cập vào Google Drive để tải các gói thư viện cần thiết tính tới hiện nay 19/08/2026](https://drive.google.com/drive/u/0/my-drive)
 
 *Lưu ý: Các file thư viện lõi `OpenNI2.dll` (64-bit) đã được tích hợp sẵn trong repo này để bạn sử dụng ngay lập tức.*
 
