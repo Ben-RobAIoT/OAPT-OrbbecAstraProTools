@@ -7,8 +7,16 @@ Trước khi vào chi tiết, có 2 điểm mấu chốt cần hiểu rõ vì ch
 
 ---
 ## Bước 0 - Môi trường
-[Tải bộ SDK dành cho LINUX bản X64].(https://github.com/orbbec/OpenNI_SDK/releases/download/v2.3.0.86-beat6/OpenNI_2.3.0.86_202210111154_4c8f5aa4_beta6_linux_x64.zip)
-Lưu ý: Nếu đang sài HDH (OS) khác thì truy cập vào đây [Link].(https://github.com/orbbec/OpenNI_SDK/releases) để tải từ nhà sản xuất nhé
+* [Tải bộ SDK dành cho LINUX bản X64].(https://github.com/orbbec/OpenNI_SDK/releases/download/v2.3.0.86-beat6/OpenNI_2.3.0.86_202210111154_4c8f5aa4_beta6_linux_x64.zip)
+* Lưu ý: Nếu đang sài HDH (OS) khác thì truy cập vào đây [Link].(https://github.com/orbbec/OpenNI_SDK/releases) để tải từ nhà sản xuất nhé
+* Khi cài đặt thư viện và chạy trong bất cứ nơi nào thì cũng đều phải thiết lập venv môi trường ảo nhé
+```bash
+python -m venv venv # Tạo môi trường ảo
+source venv/bin/activate # Kích hoạt môi trường. Dành riêng cho Linux
+pip install -r requirements.txt # Cài đặt thư viện cần thiết cho môi trường ảo (Những nhà phát triển trước họ đã lưu vào đây chỉ cần chạy file đó là cài tự động đồng bộ hết)
+pip freeze > requirements.txt # (Nếu có thư viện mới mà cần đồng bộ sau này để tránh việc cài sai thư viện trên máy khác)
+deactivate # Thoát môi trường ảo venv
+```
 
 ## Bước 1 — Passthrough USB từ Windows sang WSL2
 
