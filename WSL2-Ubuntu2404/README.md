@@ -6,6 +6,9 @@ Trước khi vào chi tiết, có 2 điểm mấu chốt cần hiểu rõ vì ch
 2. **Depth và IR dùng chung 1 sensor vật lý** → hầu hết driver (astra_camera, OrbbecSDK) **không cho chạy Depth + IR raw cùng lúc**, đây là giới hạn phần cứng chứ không phải lỗi cấu hình. Bạn chỉ chạy song song được **RGB + Depth** hoặc **RGB + IR**, không phải cả 3 cùng lúc theo kiểu raw.
 
 ---
+## Bước 0 - Môi trường
+[Tải bộ SDK dành cho LINUX bản X64].(https://github.com/orbbec/OpenNI_SDK/releases/download/v2.3.0.86-beat6/OpenNI_2.3.0.86_202210111154_4c8f5aa4_beta6_linux_x64.zip)
+Lưu ý: Nếu đang sài HDH (OS) khác thì truy cập vào đây [Link].(https://github.com/orbbec/OpenNI_SDK/releases) để tải từ nhà sản xuất nhé
 
 ## Bước 1 — Passthrough USB từ Windows sang WSL2
 
