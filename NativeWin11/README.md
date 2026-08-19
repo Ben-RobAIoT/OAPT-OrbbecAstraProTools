@@ -1,6 +1,5 @@
 Dưới đây là file `README.md` đầy đủ, chi tiết, tổng hợp lại toàn bộ hành trình debug dự án "No-SDK" cho Astra Pro, giữ nguyên nội dung gốc và có bổ sung một số phần làm rõ kỹ thuật (kèm trích dẫn tới mã nguồn thực tế trong `astra_crossplatform.py` ở những chỗ liên quan).
 
-```markdown
 # 🎯 Astra Pro "No-SDK" Cross-Platform Driver
 
 > Nhật ký kỹ thuật (Engineering Log) quá trình xây dựng driver độc lập cho camera Orbbec Astra Pro, **hoàn toàn không phụ thuộc vào Orbbec SDK**, chạy được trên cả **Windows 11** và **Ubuntu (Raspberry Pi 4/5)**.
