@@ -1,5 +1,22 @@
 Dưới đây là file `README.md` đầy đủ, chi tiết, tổng hợp lại toàn bộ hành trình debug dự án "No-SDK" cho Astra Pro, giữ nguyên nội dung gốc và có bổ sung một số phần làm rõ kỹ thuật (kèm trích dẫn tới mã nguồn thực tế trong `astra_crossplatform.py` ở những chỗ liên quan).
 
+## Yêu cầu Hệ thống (Prerequisites)
+
+Để kiến trúc "No-SDK" hoạt động hoàn hảo trên Windows 11, vui lòng đảm bảo bạn đã cài đặt các thành phần sau:
+
+1. **Microsoft Visual C++ Redistributable All-in-One**
+   * Hệ điều hành Windows cần các thư viện C++ runtime để chạy lõi OpenNI2.
+   * 📥 [Tải tại TechPowerUp](https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/) (Chọn máy chủ gần nhất (thường là Singapore SG), giải nén và chạy file `install_all.bat` dưới quyền Administrator).
+
+2. **Orbbec Astra Pro Windows Driver**
+   * Đảm bảo Windows Device Manager đã nhận `ORBBEC Depth` và `ORBBEC Audio`.
+   * 📥 [Tải Driver chính thức tại đây](https://github.com/orbbec/OpenNI_SDK/releases)
+
+3. **Tổng hợp trong Google Drive**
+   * 📥 [Truy cập vào Google Drive để tải các gói thư viện cần thiết tính tới hiện nay 19/08/2026] (https://drive.google.com/drive/u/0/my-drive)
+
+*Lưu ý: Các file thư viện lõi `OpenNI2.dll` (64-bit) đã được tích hợp sẵn trong repo này để bạn sử dụng ngay lập tức.*
+
 # 🎯 Astra Pro "No-SDK" Cross-Platform Driver
 
 > Nhật ký kỹ thuật (Engineering Log) quá trình xây dựng driver độc lập cho camera Orbbec Astra Pro, **hoàn toàn không phụ thuộc vào Orbbec SDK**, chạy được trên cả **Windows 11** và **Ubuntu (Raspberry Pi 4/5)**.
