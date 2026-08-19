@@ -1,6 +1,5 @@
 Dưới đây là bản viết lại đầy đủ, chi tiết và dễ đọc hơn cho phần **Hướng dẫn Cài đặt & Thiết lập Môi trường**, kèm các bước xử lý riêng cho WSL2 và phần thiết lập hiển thị (display) mà bạn yêu cầu bổ sung.
 
-```markdown
 # 🛠️ Hướng dẫn Cài đặt & Thiết lập Môi trường: Orbbec Astra Pro (OpenNI2) trên WSL2 (Ubuntu 24.04)
 
 > Tài liệu này hướng dẫn chi tiết từng bước để cài đặt bộ thư viện lõi **OpenNI SDK** (chính chủ Orbbec) và cấu hình môi trường Python để chạy được camera Astra Pro trên **WSL2**, theo đúng kiến trúc **"No-SDK"** (không dùng Orbbec SDK nguyên khối).
