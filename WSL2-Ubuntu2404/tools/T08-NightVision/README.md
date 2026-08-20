@@ -1,6 +1,5 @@
 Dưới đây là nội dung file **README.md** hoàn chỉnh, bạn có thể copy thẳng vào repo. Mình đã giữ bố cục gọn, tập trung vào ý tưởng – nguyên lý – mô hình toán học – cú pháp, không lan man.
 
-```markdown
 # 🌙 IR Night Vision Human Detection System
 
 Hệ thống phát hiện người trong bóng tối bằng ảnh **hồng ngoại (IR)** kết hợp **AI (YOLOv8)** và **cảm biến độ sâu (Depth)** từ camera Orbbec Astra Pro, chạy trên WSL2.
